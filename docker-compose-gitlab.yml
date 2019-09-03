@@ -1,0 +1,79 @@
+version: '3'
+
+volumes:
+  database_data:
+    driver: local
+  test_database_data:
+    driver: local
+
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - database_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - roachnet
+    environment:
+      - POSTGRES_DB=quickfire
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+  test_db:
+    image: postgres:latest
+    volumes:
+      - test_database_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - roachnet
+    environment:
+      - POSTGRES_DB=quickfire
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"
+  web:
+    build: .
+    image: "${CI_APPLICATION_REPOSITORY}:latest"
+    ports:
+      - "80:5000"
+    networks:
+      - roachnet
+    environment:
+      - DB_DSN=pgsql:host=db;port=5432;dbname=quickfire;sslmode=disable
+      - DB_GAME_DSN=pgsql:host=db;port=5432;dbname=game;sslmode=disable
+      - DB_TEST_DSN=pgsql:host=test_db;port=5432;dbname=quickfire;sslmode=disable
+      - DB_TEST_GAME_DSN=pgsql:host=test_db;port=5432;dbname=game;sslmode=disable
+      - DB_USER=root
+      - DB_PASS=password
+      - QUICKFIRE_DEBUG=YES
+      - QUICKFIRE_ENV=test
+  web-migrate:
+    build: .
+    image: "${CI_APPLICATION_REPOSITORY}:latest"
+    networks:
+      - roachnet
+    volumes:
+      - ./migrate_db.sh:/migrate_db.sh
+    environment:
+      - DB_DSN=pgsql:host=db;port=5432;dbname=quickfire;sslmode=disable
+      - DB_GAME_DSN=pgsql:host=db;port=5432;dbname=game;sslmode=disable
+      - DB_TEST_DSN=pgsql:host=test_db;port=5432;dbname=quickfire;sslmode=disable
+      - DB_TEST_GAME_DSN=pgsql:host=test_db;port=5432;dbname=game;sslmode=disable
+      - DB_USER=root
+      - DB_PASS=password
+      - QUICKFIRE_DEBUG=YES
+      - QUICKFIRE_ENV=test
+    entrypoint: "/bin/bash"
+    command: /migrate_db.sh
+  selenium:
+    image: selenium/standalone-chrome
+    ports:
+      - "4444:4444"
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - roachnet
+networks:
+  roachnet:

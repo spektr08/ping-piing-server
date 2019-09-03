@@ -1,0 +1,51 @@
+version: '3'
+
+volumes:
+  database_data:
+    driver: local
+  test_database_data:
+    driver: local
+
+services:
+  db:
+    image: postgres:latest
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    networks:
+      - roachnet
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5432:5432"
+  test_db:
+    image: postgres:latest
+    volumes:
+      - test_database_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - roachnet
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    ports:
+      - "5433:5432"
+  web:
+    build: .
+    ports:
+      - "80:5000"
+    networks:
+      - roachnet
+    volumes:
+      - ./php/src:/app
+    environment:
+      - DB_DSN=pgsql:host=db;port=5432;dbname=db;sslmode=disable
+      - DB_TEST_DSN=pgsql:host=test_db;port=5432;dbname=db;sslmode=disable
+      - DB_USER=root
+      - DB_PASS=password
+      - QUICKFIRE_DEBUG=YES
+      - QUICKFIRE_ENV=dev
+networks:
+  roachnet:
