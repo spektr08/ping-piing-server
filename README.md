@@ -80,6 +80,4 @@ Run tests in codeception container
 - [Docker documentation](https://docs.docker.com)
 
     
----
 
-#### Modified by Catalyst Global, Originally Built by [dmstr](http://diemeisterei.de)
